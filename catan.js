@@ -1,37 +1,42 @@
 const playerLogsId = 'logs';
 const playerNamesId = 'player-name'
+let previousLog = 0;
 console.log('Extension loaded :)');
 browser.storage.local.set({ game: 'Catan' });
 
-// Grab all the player names
-let playerNames = [];
+// Add player names to array and send this to main.js
 const playerElements = document.getElementsByClassName(playerNamesId);
-for (let player of playerElements) {
-    playerNames.push(player.innerText);
+if (playerElements) {
+    let playerNames = [];
+    for (let player of playerElements) {
+        playerNames.push(player.innerText);
+    }
+    browser.storage.local.set({ players: playerNames});
 }
-browser.storage.local.set({ players: playerNames});
 
-// Game event logs
+// Parse the logs
+function logParser(log) {
+    let logNumber = log[0].id.split('_')[1];
+    if (logNumber - 1 > previousLog && previousLog !== 0) {
+        console.log(previousLog, logNumber);
+    }
+    console.log(log);
+    console.log(log[0].innerHTML);
+
+    // Get div_id
+    
+
+    browser.storage.local.set({ BGA: log[0].innerHTML });
+    previousLog = logNumber;
+    
+}
+
+// Game event log listener
 let gameLog = new MutationObserver(function (e) {
     if (e[0].addedNodes) {
-        let log = e[0].addedNodes[0].innerHTML;
-        console.log(log);
+        let log = e[0].addedNodes;
 
-        // Handle addedNodes with multiple nodes...
-        if (e[0].addedNodes.length > 1) {
-            console.log('Multiple nodes added');
-            for (let i of e[0].addedNodes) {
-                console.log(i);
-            }
-        }
-        browser.storage.local.set({ BGA: log });
         logParser(log);
     }
 });
 gameLog.observe(document.getElementById(playerLogsId), { childList: true });
-
-// Parse the logs
-function logParser(log) {
-    console.log(typeof log);
-    
-}
