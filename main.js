@@ -1,12 +1,13 @@
 // Update the popout menu of the extension
 
-browser.storage.local.get('players').then(result => {
-    if (result.players) {
-        for (let name of result.players) {
+browser.storage.local.get('playerAmounts').then(result => {
+    if (result.playerAmounts) {
+        for (const [name, resources] of Object.entries(result.playerAmounts)) {
+            console.log(name, resources)
             let playerNameElement = document.createElement('div');
             playerNameElement.className = 'player-name'
             playerNameElement.id = name;
-            playerNameElement.innerText = name;
+            playerNameElement.innerText = `${name} - ${JSON.stringify(resources)}`;
             document.getElementById('players').appendChild(playerNameElement)
         }
     }
