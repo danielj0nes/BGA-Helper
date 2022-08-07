@@ -1,0 +1,14 @@
+h1, h2, h3, h4 {
+    padding: 1px;
+    margin: 0px;
+}
+body {
+    width:780px;
+    height:580px;
+}
+td, th {
+border: 1px solid #ddd;
+padding: 5px;
+}
+
+tr:nth-child(even) {background-color: #f2f2f2;}
