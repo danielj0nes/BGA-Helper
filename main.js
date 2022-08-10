@@ -3,7 +3,6 @@
 browser.storage.local.get('playerAmounts').then(result => {
     if (result.playerAmounts) {
         for (const [name, resources] of Object.entries(result.playerAmounts)) {
-            console.log(name, resources)
             let playerNameElement = document.createElement('div');
             playerNameElement.className = 'player-name'
             playerNameElement.id = name;

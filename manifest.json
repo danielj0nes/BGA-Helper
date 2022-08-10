@@ -3,9 +3,7 @@
     "manifest_version": 2,
     "name": "BGA Helper",
     "version": "1.0",
-  
-    "description": "A collection of helpful add-on's for BoardGameArena (BGA)",
-  
+    "description": "A collection of helpful plugins for Board Game Arena (BGA)",
     "icons": {
       "48": "icons/BGA_Helper_Icon_48x48.png"
     },
