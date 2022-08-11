@@ -9,6 +9,9 @@ const playerSettlement = 'builds a settlement';
 const playerUpgrades = 'upgrades a ';
 const playerBuys = 'buys a ';
 const playerGetsNothing = 'gets nothing</div>';
+const playerTrade = 'gives ';
+const maritimeTrade = 'uses maritime trade';
+const resourceMatch = /icon_(.+?)"/g;
 
 let previousLog = 0;
 let diceStats = {2: 0, 3: 0, 4: 0, 5: 0,
@@ -27,20 +30,54 @@ if (playerElements && !inProgress) {
                                              'grain': 0, 'wool': 0,
                                              'ore': 0};
     }
-    browser.storage.local.set({ playerAmounts: playerResources});
+    browser.storage.local.set({ playerAmounts: playerResources });
     inProgress = true;
+}
+
+// Helper function to replace undefined values caught in the regex with 1
+// This deals with the case where just the icon is shown and no number
+function parseUndefinedMatches(log) {
+    const amountMatch = /(><)div class="cat_log_token?.|>([0-9])</g;
+    const amounts = [...log.matchAll(amountMatch)];
+    let updatedAmounts = []
+    amounts.forEach(amount => {
+        updatedAmounts.push(amount.map(num => num === undefined ? 1 : num));
+    });
+    return updatedAmounts;
 }
 
 // Filter the builds/upgrades/buys log events and update playerResources
 function parseBuilds(log) {
+    const nameMatch = /;">(.+?)<\/span><!--PNE-->/;
+    const name = log.match(nameMatch);
     if (log.includes(playerRoad)) {
-        console.log('player builds a road -1 wood, -1 brick');
+        playerResources[name[1]]['brick'] -= 1;
+        playerResources[name[1]]['lumber'] -= 1;
+        console.log("road built")
     } else if (log.includes(playerSettlement)) {
-        console.log('player builds a settlement -1 lumber, -1 brick, -1 grain');
+        playerResources[name[1]]['brick'] -= 1;
+        playerResources[name[1]]['grain'] -= 1;
+        playerResources[name[1]]['lumber'] -= 1;
+        playerResources[name[1]]['wool'] -= 1;
     } else if (log.includes(playerUpgrades)) {
-        console.log('player upgrades a settlement -1 lumber, -1 brick, -1 grain');
+        playerResources[name[1]]['ore'] -= 3;
+        playerResources[name[1]]['grain'] -= 2;
     } else if (log.includes(playerBuys)) {
-        console.log('player buys a development card -1 ore');
+        playerResources[name[1]]['ore'] -= 1;
+        playerResources[name[1]]['grain'] -= 1;
+        playerResources[name[1]]['wool'] -= 1;
+        console.log("player bought")
+    }
+}
+
+// Filter trade log events and update playerResources
+function parseTrades(log) {
+    if (log.includes(maritimeTrade)) {
+        const nameMatch = /">(.+?) uses/
+        const name = log.match(nameMatch);
+        const resources = [...log.matchAll(resourceMatch)];
+        const updatedAmounts = parseUndefinedMatches(log);
+        console.log(name, resources, updatedAmounts);
     }
 }
 
@@ -48,21 +85,15 @@ function parseBuilds(log) {
 function parseGains(log) {
     if (log.includes(playerGetsNothing) || !(log.includes(playerGets))) return;
     const nameMatch = />(.+?) gets </;
-    const resourceMatch = /icon_(.+?)"/g;
-    const amountMatch = /(><)div class="cat_log_token?.|>([0-9])</g;
-    let name = log.match(nameMatch);
-    let amounts = [...log.matchAll(amountMatch)];
-    let resources = [...log.matchAll(resourceMatch)];
-    // Replace undefined values caught in the regex with 1. Surely a better solution?
-    let updatedAmounts = []
-    amounts.forEach(amount => {
-        updatedAmounts.push(amount.map(num => num === undefined ? 1 : num));
-    });
+    const name = log.match(nameMatch);
+    const resources = [...log.matchAll(resourceMatch)];
+    const updatedAmounts = parseUndefinedMatches(log);
+    // Increase each resource by the respective amount obtained
     updatedAmounts.forEach((amount, index) => {
         playerResources[name[1]][resources[index][1]] += parseInt(amount[amount.length - 1]);
     });
     console.log(playerResources);
-    browser.storage.local.set({ playerAmounts: playerResources});
+    browser.storage.local.set({ playerAmounts: playerResources });
 }
 
 // Parse dice rolls and update diceStats to keep track of rolls over time
@@ -80,6 +111,7 @@ function runParsers(log) {
     parseDice(log);
     parseGains(log);
     parseBuilds(log);
+    parseTrades(log);
 }
 
 // Scrape the logs from the game and obtain the inner HTML for later parsing
