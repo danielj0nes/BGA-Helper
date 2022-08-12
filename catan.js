@@ -11,6 +11,7 @@ const playerBuys = 'buys a ';
 const playerGetsNothing = 'gets nothing</div>';
 const playerTrade = 'gives ';
 const maritimeTrade = 'uses maritime trade';
+const maritimeSplit = ' → ';
 const resourceMatch = /icon_(.+?)"/g;
 
 let previousLog = 0;
@@ -48,36 +49,47 @@ function parseUndefinedMatches(log) {
 
 // Filter the builds/upgrades/buys log events and update playerResources
 function parseBuilds(log) {
+    if (!(log.includes(playerRoad)) && !(log.includes(playerSettlement)) && !(log.includes(playerUpgrades)) && !(log.includes(playerBuys))) return;
+    console.log("Player builds...");
     const nameMatch = /;">(.+?)<\/span><!--PNE-->/;
-    const name = log.match(nameMatch);
+    const name = log.match(nameMatch)[1];
     if (log.includes(playerRoad)) {
-        playerResources[name[1]]['brick'] -= 1;
-        playerResources[name[1]]['lumber'] -= 1;
-        console.log("road built")
+        playerResources[name]['brick'] -= 1;
+        playerResources[name]['lumber'] -= 1;
     } else if (log.includes(playerSettlement)) {
-        playerResources[name[1]]['brick'] -= 1;
-        playerResources[name[1]]['grain'] -= 1;
-        playerResources[name[1]]['lumber'] -= 1;
-        playerResources[name[1]]['wool'] -= 1;
+        playerResources[name]['brick'] -= 1;
+        playerResources[name]['grain'] -= 1;
+        playerResources[name]['lumber'] -= 1;
+        playerResources[name]['wool'] -= 1;
     } else if (log.includes(playerUpgrades)) {
-        playerResources[name[1]]['ore'] -= 3;
-        playerResources[name[1]]['grain'] -= 2;
+        playerResources[name]['ore'] -= 3;
+        playerResources[name]['grain'] -= 2;
     } else if (log.includes(playerBuys)) {
-        playerResources[name[1]]['ore'] -= 1;
-        playerResources[name[1]]['grain'] -= 1;
-        playerResources[name[1]]['wool'] -= 1;
-        console.log("player bought")
+        playerResources[name]['ore'] -= 1;
+        playerResources[name]['grain'] -= 1;
+        playerResources[name]['wool'] -= 1;
     }
+    browser.storage.local.set({ playerAmounts: playerResources });
 }
 
 // Filter trade log events and update playerResources
 function parseTrades(log) {
     if (log.includes(maritimeTrade)) {
         const nameMatch = /">(.+?) uses/
-        const name = log.match(nameMatch);
-        const resources = [...log.matchAll(resourceMatch)];
-        const updatedAmounts = parseUndefinedMatches(log);
-        console.log(name, resources, updatedAmounts);
+        const name = log.match(nameMatch)[1];
+        const [loses, receives] = log.split(maritimeSplit);
+        const losesAmounts = parseUndefinedMatches(loses);
+        const receivesAmounts = parseUndefinedMatches(receives);
+        const losesResources = [...loses.matchAll(resourceMatch)];
+        const receivesResources = [...receives.matchAll(resourceMatch)];
+        losesAmounts.forEach((amount, index) => {
+            playerResources[name][losesResources[index][1]] -= parseInt(amount[amount.length - 1]);
+        });
+        receivesAmounts.forEach((amount, index) => {
+            playerResources[name][receivesResources[index][1]] += parseInt(amount[amount.length - 1]);
+        });
+        browser.storage.local.set({ playerAmounts: playerResources });
+        console.log("Maritime trade");
     }
 }
 
@@ -85,12 +97,12 @@ function parseTrades(log) {
 function parseGains(log) {
     if (log.includes(playerGetsNothing) || !(log.includes(playerGets))) return;
     const nameMatch = />(.+?) gets </;
-    const name = log.match(nameMatch);
+    const name = log.match(nameMatch)[1];
     const resources = [...log.matchAll(resourceMatch)];
     const updatedAmounts = parseUndefinedMatches(log);
     // Increase each resource by the respective amount obtained
     updatedAmounts.forEach((amount, index) => {
-        playerResources[name[1]][resources[index][1]] += parseInt(amount[amount.length - 1]);
+        playerResources[name][resources[index][1]] += parseInt(amount[amount.length - 1]);
     });
     console.log(playerResources);
     browser.storage.local.set({ playerAmounts: playerResources });
