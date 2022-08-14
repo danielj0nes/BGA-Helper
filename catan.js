@@ -12,6 +12,7 @@ const playerGetsNothing = 'gets nothing</div>';
 const playerTrade = 'gives ';
 const maritimeTrade = 'uses maritime trade';
 const maritimeSplit = ' → ';
+const playerSplit = ' to ';
 const resourceMatch = /icon_(.+?)"/g;
 
 let previousLog = 0;
@@ -50,24 +51,23 @@ function parseUndefinedMatches(log) {
 // Filter the builds/upgrades/buys log events and update playerResources
 function parseBuilds(log) {
     if (!(log.includes(playerRoad)) && !(log.includes(playerSettlement)) && !(log.includes(playerUpgrades)) && !(log.includes(playerBuys))) return;
-    console.log("Player builds...");
     const nameMatch = /;">(.+?)<\/span><!--PNE-->/;
     const name = log.match(nameMatch)[1];
     if (log.includes(playerRoad)) {
-        playerResources[name]['brick'] -= 1;
-        playerResources[name]['lumber'] -= 1;
+        playerResources[name]['brick'] = Math.max(0, playerResources[name]['brick'] - 1);
+        playerResources[name]['lumber'] = Math.max(0, playerResources[name]['lumber'] - 1);
     } else if (log.includes(playerSettlement)) {
-        playerResources[name]['brick'] -= 1;
-        playerResources[name]['grain'] -= 1;
-        playerResources[name]['lumber'] -= 1;
-        playerResources[name]['wool'] -= 1;
+        playerResources[name]['brick'] = Math.max(0, playerResources[name]['brick'] - 1);
+        playerResources[name]['lumber'] = Math.max(0, playerResources[name]['lumber'] - 1);
+        playerResources[name]['grain'] = Math.max(0, playerResources[name]['grain'] - 1);
+        playerResources[name]['wool'] = Math.max(0, playerResources[name]['wool'] - 1);
     } else if (log.includes(playerUpgrades)) {
-        playerResources[name]['ore'] -= 3;
-        playerResources[name]['grain'] -= 2;
+        playerResources[name]['ore'] = Math.max(0, playerResources[name]['ore'] - 3);
+        playerResources[name]['grain'] = Math.max(0, playerResources[name]['grain'] - 2);
     } else if (log.includes(playerBuys)) {
-        playerResources[name]['ore'] -= 1;
-        playerResources[name]['grain'] -= 1;
-        playerResources[name]['wool'] -= 1;
+        playerResources[name]['ore'] = Math.max(0, playerResources[name]['ore'] - 1);
+        playerResources[name]['grain'] = Math.max(0, playerResources[name]['grain'] - 1);
+        playerResources[name]['wool'] = Math.max(0, playerResources[name]['wool'] - 1);
     }
     browser.storage.local.set({ playerAmounts: playerResources });
 }
@@ -83,13 +83,34 @@ function parseTrades(log) {
         const losesResources = [...loses.matchAll(resourceMatch)];
         const receivesResources = [...receives.matchAll(resourceMatch)];
         losesAmounts.forEach((amount, index) => {
-            playerResources[name][losesResources[index][1]] -= parseInt(amount[amount.length - 1]);
+            playerResources[name][losesResources[index][1]] = Math.max(0, playerResources[name][losesResources[index][1]] - parseInt(amount[amount.length - 1]));
+            // playerResources[name][losesResources[index][1]] -= Math.max(0, parseInt(amount[amount.length - 1]));
         });
         receivesAmounts.forEach((amount, index) => {
             playerResources[name][receivesResources[index][1]] += parseInt(amount[amount.length - 1]);
         });
         browser.storage.local.set({ playerAmounts: playerResources });
-        console.log("Maritime trade");
+    } else if (log.includes(playerTrade)) {
+        const p1NameMatch = /⇌ (.+?) gives/;
+        const p2NameMatch = /(.+?) who/;
+        const [gives, receives] = log.split(playerSplit);
+        const p1Name = gives.match(p1NameMatch)[1];
+        const p2Name = receives.match(p2NameMatch)[1];
+        const p1Amounts = parseUndefinedMatches(gives);
+        const p2Amounts = parseUndefinedMatches(receives);
+        const p1Resources = [...gives.matchAll(resourceMatch)];
+        const p2Resources = [...receives.matchAll(resourceMatch)];
+        // P1 gives and P2 receives
+        p1Amounts.forEach((amount, index) => {
+            playerResources[p1Name][p1Resources[index][1]] -= Math.max(0, playerResources[p1Name][p1Resources[index][1]] - parseInt(amount[amount.length - 1]));
+            playerResources[p2Name][p2Resources[index][1]] += parseInt(amount[amount.length - 1]);
+        });
+        // P2 gives and P1 receives
+        p2Amounts.forEach((amount, index) => {
+            playerResources[p2Name][p2Resources[index][1]] -= Math.max(0, playerResources[p2Name][p2Resources[index][1]] - parseInt(amount[amount.length - 1]));
+            playerResources[p1Name][p1Resources[index][1]] += parseInt(amount[amount.length - 1]);
+        });
+        browser.storage.local.set({ playerAmounts: playerResources });
     }
 }
 
@@ -149,6 +170,7 @@ function logScraper(log) {
     browser.storage.local.set({ BGA: log[0].innerHTML });
     // Update the last log number, for multiple logs case
     previousLog = logNumber;
+
 }
 
 // Game event log listener
