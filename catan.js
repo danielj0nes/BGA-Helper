@@ -1,3 +1,5 @@
+// Parse the event log in the Catan game to obtain and display the information conveniently
+// Includes: tracking dice rolls and player resources (imperfect due to robber stealing from other players being hidden)
 console.log('Extension loaded for Catan');
 
 const playerLogsId = 'logs';
@@ -102,13 +104,13 @@ function parseTrades(log) {
         const p2Resources = [...receives.matchAll(resourceMatch)];
         // P1 gives and P2 receives
         p1Amounts.forEach((amount, index) => {
-            playerResources[p1Name][p1Resources[index][1]] -= Math.max(0, playerResources[p1Name][p1Resources[index][1]] - parseInt(amount[amount.length - 1]));
-            playerResources[p2Name][p2Resources[index][1]] += parseInt(amount[amount.length - 1]);
+            playerResources[p1Name][p1Resources[index][1]] -= Math.max(0, (playerResources[p1Name][p1Resources[index][1]] - parseInt(amount[amount.length - 1])));
+            playerResources[p2Name][p1Resources[index][1]] += parseInt(amount[amount.length - 1]);
         });
         // P2 gives and P1 receives
         p2Amounts.forEach((amount, index) => {
-            playerResources[p2Name][p2Resources[index][1]] -= Math.max(0, playerResources[p2Name][p2Resources[index][1]] - parseInt(amount[amount.length - 1]));
-            playerResources[p1Name][p1Resources[index][1]] += parseInt(amount[amount.length - 1]);
+            playerResources[p2Name][p2Resources[index][1]] -= Math.max(0, (playerResources[p2Name][p2Resources[index][1]] - parseInt(amount[amount.length - 1])));
+            playerResources[p1Name][p2Resources[index][1]] += parseInt(amount[amount.length - 1]);
         });
         browser.storage.local.set({ playerAmounts: playerResources });
     }
@@ -125,7 +127,6 @@ function parseGains(log) {
     updatedAmounts.forEach((amount, index) => {
         playerResources[name][resources[index][1]] += parseInt(amount[amount.length - 1]);
     });
-    console.log(playerResources);
     browser.storage.local.set({ playerAmounts: playerResources });
 }
 
