@@ -16,6 +16,9 @@ const maritimeTrade = 'uses maritime trade';
 const maritimeSplit = ' → ';
 const playerSplit = ' to ';
 const resourceMatch = /icon_(.+?)"/g;
+const playerDiscards = 'discards';
+const playerSteals = 'You get';
+const playerLoses = 'You lose';
 
 let previousLog = 0;
 let diceStats = {2: 0, 3: 0, 4: 0, 5: 0,
@@ -48,6 +51,21 @@ function parseUndefinedMatches(log) {
         updatedAmounts.push(amount.map(num => num === undefined ? 1 : num));
     });
     return updatedAmounts;
+}
+
+// Handle events associated with the robber
+function parseRobber(log) {
+    if (!(log.includes(playerDiscards)) && !(log.includes(playerLoses)) && !(log.includes(playerSteals))) return;
+    if (log.includes(playerLoses)) {
+        // Update main player losing a resource to the robber
+        const resourceLost = log.match(/icon_(.+?)"/)[1];
+        const playerName = Object.keys(playerResources)[0];
+        playerResources[playerName][resourceLost] -= Math.max(0, playerResources[playerName][resourceLost] - 1);
+    } else if (log.includes(playerSteals)) {
+        // Update main player gaining + losing player losing
+    } else if (log.includes(playerDiscards)) {
+        // Update discarding cards for each player
+    }
 }
 
 // Filter the builds/upgrades/buys log events and update playerResources
@@ -146,6 +164,7 @@ function runParsers(log) {
     parseGains(log);
     parseBuilds(log);
     parseTrades(log);
+    parseRobber(log);
 }
 
 // Scrape the logs from the game and obtain the inner HTML for later parsing
