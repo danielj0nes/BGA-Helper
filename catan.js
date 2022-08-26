@@ -17,7 +17,8 @@ const maritimeSplit = ' → ';
 const playerSplit = ' to ';
 const resourceMatch = /icon_(.+?)"/g;
 const playerDiscards = 'discards';
-const playerSteals = 'You get';
+const playerSteals = 'You get <span';
+const playerStealsFrom = 'steals from';
 const playerLoses = 'You lose';
 
 let previousLog = 0;
@@ -26,6 +27,7 @@ let diceStats = {2: 0, 3: 0, 4: 0, 5: 0,
                  10: 0, 11: 0, 12: 0};
 let playerResources = {};
 let inProgress = false;
+let stolenFrom = '';
 
 browser.storage.local.set({ game: 'Catan' });
 
@@ -46,7 +48,7 @@ if (playerElements && !inProgress) {
 function parseUndefinedMatches(log) {
     const amountMatch = /(><)div class="cat_log_token?.|>([0-9])</g;
     const amounts = [...log.matchAll(amountMatch)];
-    let updatedAmounts = []
+    let updatedAmounts = [];
     amounts.forEach(amount => {
         updatedAmounts.push(amount.map(num => num === undefined ? 1 : num));
     });
@@ -56,16 +58,29 @@ function parseUndefinedMatches(log) {
 // Handle events associated with the robber
 function parseRobber(log) {
     if (!(log.includes(playerDiscards)) && !(log.includes(playerLoses)) && !(log.includes(playerSteals))) return;
+    const playerName = Object.keys(playerResources)[0];
     if (log.includes(playerLoses)) {
         // Update main player losing a resource to the robber
-        const resourceLost = log.match(/icon_(.+?)"/)[1];
-        const playerName = Object.keys(playerResources)[0];
-        playerResources[playerName][resourceLost] -= Math.max(0, playerResources[playerName][resourceLost] - 1);
+        const resource = log.match(/icon_(.+?)"/)[1];
+        playerResources[playerName][resource] -= Math.max(0, playerResources[playerName][resource] - 1);
     } else if (log.includes(playerSteals)) {
         // Update main player gaining + losing player losing
+        const resource = log.match(/icon_(.+?)"/)[1];
+        playerResources[playerName][resource] += 1;
+        playerResources[stolenFrom][resource] -= Math.max(0, playerResources[stolenFrom][resource] - 1);
     } else if (log.includes(playerDiscards)) {
-        // Update discarding cards for each player
+        // Remove discarded cards from the player
+        const nameMatch = />(.*) discards/;
+        const name = log.match(nameMatch)[1];
+        const amounts = parseUndefinedMatches(log);
+        const resources = [...log.matchAll(resourceMatch)];
+        console.log(name, amounts, resources);
+        amounts.forEach((amount, index) => {
+            playerResources[name][resources[index][1]] -= Math.max(0, playerResources[name][resources[index][1]] - parseInt(amount[amount.length - 1]));
+        });
+        console.log(name, amounts, resources);
     }
+    browser.storage.local.set({ playerAmounts: playerResources });
 }
 
 // Filter the builds/upgrades/buys log events and update playerResources
@@ -74,20 +89,20 @@ function parseBuilds(log) {
     const nameMatch = /;">(.+?)<\/span><!--PNE-->/;
     const name = log.match(nameMatch)[1];
     if (log.includes(playerRoad)) {
-        playerResources[name]['brick'] = Math.max(0, playerResources[name]['brick'] - 1);
-        playerResources[name]['lumber'] = Math.max(0, playerResources[name]['lumber'] - 1);
+        playerResources[name].brick = Math.max(0, playerResources[name].brick - 1);
+        playerResources[name].lumber = Math.max(0, playerResources[name].lumber - 1);
     } else if (log.includes(playerSettlement)) {
-        playerResources[name]['brick'] = Math.max(0, playerResources[name]['brick'] - 1);
-        playerResources[name]['lumber'] = Math.max(0, playerResources[name]['lumber'] - 1);
-        playerResources[name]['grain'] = Math.max(0, playerResources[name]['grain'] - 1);
-        playerResources[name]['wool'] = Math.max(0, playerResources[name]['wool'] - 1);
+        playerResources[name].brick = Math.max(0, playerResources[name].brick - 1);
+        playerResources[name].lumber = Math.max(0, playerResources[name].lumber - 1);
+        playerResources[name].grain = Math.max(0, playerResources[name].grain - 1);
+        playerResources[name].wool = Math.max(0, playerResources[name].wool - 1);
     } else if (log.includes(playerUpgrades)) {
-        playerResources[name]['ore'] = Math.max(0, playerResources[name]['ore'] - 3);
-        playerResources[name]['grain'] = Math.max(0, playerResources[name]['grain'] - 2);
+        playerResources[name].ore = Math.max(0, playerResources[name].ore - 3);
+        playerResources[name].grain = Math.max(0, playerResources[name].grain - 2);
     } else if (log.includes(playerBuys)) {
-        playerResources[name]['ore'] = Math.max(0, playerResources[name]['ore'] - 1);
-        playerResources[name]['grain'] = Math.max(0, playerResources[name]['grain'] - 1);
-        playerResources[name]['wool'] = Math.max(0, playerResources[name]['wool'] - 1);
+        playerResources[name].ore = Math.max(0, playerResources[name].ore - 1);
+        playerResources[name].grain = Math.max(0, playerResources[name].grain - 1);
+        playerResources[name].wool = Math.max(0, playerResources[name].wool - 1);
     }
     browser.storage.local.set({ playerAmounts: playerResources });
 }
@@ -95,7 +110,7 @@ function parseBuilds(log) {
 // Filter trade log events and update playerResources
 function parseTrades(log) {
     if (log.includes(maritimeTrade)) {
-        const nameMatch = /">(.+?) uses/
+        const nameMatch = /">(.+?) uses/;
         const name = log.match(nameMatch)[1];
         const [loses, receives] = log.split(maritimeSplit);
         const losesAmounts = parseUndefinedMatches(loses);
@@ -104,7 +119,6 @@ function parseTrades(log) {
         const receivesResources = [...receives.matchAll(resourceMatch)];
         losesAmounts.forEach((amount, index) => {
             playerResources[name][losesResources[index][1]] = Math.max(0, playerResources[name][losesResources[index][1]] - parseInt(amount[amount.length - 1]));
-            // playerResources[name][losesResources[index][1]] -= Math.max(0, parseInt(amount[amount.length - 1]));
         });
         receivesAmounts.forEach((amount, index) => {
             playerResources[name][receivesResources[index][1]] += parseInt(amount[amount.length - 1]);
@@ -160,6 +174,11 @@ function parseDice(log) {
 }
 
 function runParsers(log) {
+    // Since stealing counts as two separate events, catch the first and set the target
+    if (log.includes(playerStealsFrom)) {
+        const stolenPlayerMatch = /steals from (.*)</;
+        stolenFrom = log.match(stolenPlayerMatch)[1];
+    }
     parseDice(log);
     parseGains(log);
     parseBuilds(log);
