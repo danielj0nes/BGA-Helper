@@ -20,7 +20,7 @@ const playerDiscards = 'discards';
 const playerSteals = 'You get <span';
 const playerStealsFrom = 'steals from ';
 const playerLoses = 'You lose';
-const loses = 'loses';
+const losesText = 'loses';
 
 let previousLog = 0;
 let diceStats = {2: 0, 3: 0, 4: 0, 5: 0,
@@ -38,7 +38,7 @@ const playerElements = document.getElementsByClassName(playerNamesId);
 if (playerElements && !inProgress) {
     for (let player of playerElements) {
         playerResources[player.innerText] = {'lumber': 0, 'brick': 0,
-                                             'grain': 0, 'wool': 0,
+                                             'wool': 0, 'grain': 0,
                                              'ore': 0};
     }
     browser.storage.local.set({ playerAmounts: playerResources });
@@ -59,7 +59,6 @@ function parseUndefinedMatches(log) {
 
 // Handle events associated with the robber
 function parseRobber(log) {
-    if (!(log.includes(playerDiscards)) && !(log.includes(playerLoses)) && !(log.includes(playerSteals))) return;
     const playerName = Object.keys(playerResources)[0];
     if (log.includes(playerLoses)) {
         // Update main player losing + stealing player gaining
@@ -138,12 +137,12 @@ function parseTrades(log) {
         const p2Resources = [...receives.matchAll(resourceMatch)];
         // P1 gives and P2 receives
         p1Amounts.forEach((amount, index) => {
-            playerResources[p1Name][p1Resources[index][1]] -= Math.max(0, (playerResources[p1Name][p1Resources[index][1]] - parseInt(amount[amount.length - 1])));
+            playerResources[p1Name][p1Resources[index][1]] = Math.max(0, (playerResources[p1Name][p1Resources[index][1]] - parseInt(amount[amount.length - 1])));
             playerResources[p2Name][p1Resources[index][1]] += parseInt(amount[amount.length - 1]);
         });
         // P2 gives and P1 receives
         p2Amounts.forEach((amount, index) => {
-            playerResources[p2Name][p2Resources[index][1]] -= Math.max(0, (playerResources[p2Name][p2Resources[index][1]] - parseInt(amount[amount.length - 1])));
+            playerResources[p2Name][p2Resources[index][1]] = Math.max(0, (playerResources[p2Name][p2Resources[index][1]] - parseInt(amount[amount.length - 1])));
             playerResources[p1Name][p2Resources[index][1]] += parseInt(amount[amount.length - 1]);
         });
         browser.storage.local.set({ playerAmounts: playerResources });
@@ -167,7 +166,7 @@ function parseGains(log) {
 // Handle losses of other players through e.g., monopoly
 // Too lazy to refactor into gains function, thanks GitHub copilot
 function parseLosses(log) {
-    if (log.includes(loses)) {
+    if (log.includes(losesText)) {
         const nameMatch = />(.+?) loses </;
         const name = log.match(nameMatch)[1];
         const resources = [...log.matchAll(resourceMatch)];
@@ -216,22 +215,19 @@ function logScraper(log) {
     if (logNumber - 1 > previousLog && previousLog !== 0) {
         let logRange = (logNumber - previousLog) - 1;
         let toNumber = previousLog + 1;
+        console.log(logNumber, toNumber, logRange, previousLog);
         // Use logRange to work out how many iterations and toNumber as the stopping point
         for (let logId of [...Array(logRange).keys()].map(i => i + toNumber)) {
             let missingLog = document.getElementById(`log_${logId}`);
             console.log(missingLog.innerHTML);
             runParsers(missingLog.innerHTML);
         }
+        previousLog = logNumber;
     }
     // Save the most recent log into memory (will probs remove this)
+    previousLog = logNumber;
     console.log(log[0].innerHTML);
     runParsers(log[0].innerHTML);
-
-    // Be sure to remove this later
-    browser.storage.local.set({ BGA: log[0].innerHTML });
-    // Update the last log number, for multiple logs case
-    previousLog = logNumber;
-
 }
 
 // Game event log listener

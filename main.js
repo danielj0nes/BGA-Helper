@@ -1,13 +1,23 @@
 // Update the popout menu of the extension
 
+// Parse the JSON object to desirable HTML
+function resourceParser(json) {
+    let html = '<div class="log">';
+    for (const [resource, value] of Object.entries(json)) {
+        html += `<div class="cat_log_token icon_${resource}"></div> ${value} `;
+    }
+    html += `</div>`;
+    return html;
+}
+
 browser.storage.local.get('playerAmounts').then(result => {
     if (result.playerAmounts) {
         for (const [name, resources] of Object.entries(result.playerAmounts)) {
             let playerNameElement = document.createElement('div');
-            playerNameElement.className = 'player-name'
+            playerNameElement.className = 'player-name';
             playerNameElement.id = name;
-            playerNameElement.innerText = `${name} - ${JSON.stringify(resources)}`;
-            document.getElementById('players').appendChild(playerNameElement)
+            playerNameElement.innerHTML = `<b>${name}</b>${resourceParser(resources)}`;
+            document.getElementById('players').appendChild(playerNameElement);
         }
     }
 });
@@ -20,17 +30,9 @@ browser.storage.local.get('game').then(result => {
     }
 });
 
-browser.storage.local.get('BGA').then(result => {
-    if (result.BGA) {
-        document.getElementById('game-stats').innerText = result.BGA;
-    } else {
-        document.getElementById('game-stats').innerText = '';
-    }
-});
-
 browser.storage.local.get('dice').then(result => {
     if (result.dice) {
-        document.getElementById('dice-rolls').style.display = "";
+        document.getElementById('dice-rolls').style.display = '';
         for (const [diceNum, diceAmount] of Object.entries(result.dice)) {
             document.getElementById(`dice-${diceNum}-amount`).innerText = diceAmount;
         }

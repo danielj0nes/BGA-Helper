@@ -12,3 +12,32 @@ padding: 5px;
 }
 
 tr:nth-child(even) {background-color: #f2f2f2;}
+
+#resource .cat_log_token, .log .cat_log_token {
+    background-image: url(icons/cat_icons.png);
+    background-size: 600% 700%;
+    display: inline-block;
+    height: 18px;
+    margin-left: 0;
+    margin-right: 3px;
+    margin-top: -5px;
+    position: relative;
+    top: 4px;
+    width: 18px;
+  }
+
+.icon_wool {
+    background-position: -200% -100%;
+}
+.icon_grain {
+    background-position: -300% -100%;
+}
+.icon_brick {
+    background-position: -100% -100%;
+}
+.icon_lumber {
+    background-position: 0 -100%;
+}
+.icon_ore {
+    background-position: -400% -100%;
+}
