@@ -4,7 +4,7 @@
 function resourceParser(json) {
     let html = '<div class="log">';
     for (const [resource, value] of Object.entries(json)) {
-        html += `<div class="cat_log_token icon_${resource}"></div> ${value} `;
+        html += `<div class="cat_log_token icon_${resource}"></div> ${value}<br>`;
     }
     html += `</div>`;
     return html;
@@ -16,15 +16,28 @@ browser.storage.local.get('playerAmounts').then(result => {
             let playerNameElement = document.createElement('div');
             playerNameElement.className = 'player-name';
             playerNameElement.id = name;
-            playerNameElement.innerHTML = `<b>${name}</b>${resourceParser(resources)}`;
+            playerNameElement.innerHTML = `<b>${name}</b>`;
+
+            let playerResourcesElement = document.createElement('div');
+            playerResourcesElement.className = 'player-name';
+            playerResourcesElement.innerHTML = `${resourceParser(resources)}`;
             document.getElementById('players').appendChild(playerNameElement);
+            document.getElementById('players').appendChild(playerResourcesElement);
+        }
+    }
+});
+
+browser.storage.local.get('playerColours').then(result => {
+    if (result.playerColours) {
+        for (const [name, colour] of Object.entries(result.playerColours)) {
+            document.getElementById(name).style.color = colour;
         }
     }
 });
 
 browser.storage.local.get('game').then(result => {
     if (result.game) {
-        document.getElementById('game').innerText = result.game;
+        document.getElementById('game').innerText = `Now playing: ${result.game}`;
     } else {
         document.getElementById('game').innerText = 'No games currently in progress';
     }

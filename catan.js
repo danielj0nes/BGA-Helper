@@ -30,6 +30,7 @@ let playerResources = {};
 let inProgress = false;
 let stolenFrom = '';
 let thief = '';
+let playerColours = {};
 
 browser.storage.local.set({ game: 'Catan' });
 
@@ -40,8 +41,10 @@ if (playerElements && !inProgress) {
         playerResources[player.innerText] = {'lumber': 0, 'brick': 0,
                                              'wool': 0, 'grain': 0,
                                              'ore': 0};
+        playerColours[player.innerText] = player.firstElementChild.style.color;
     }
     browser.storage.local.set({ playerAmounts: playerResources });
+    browser.storage.local.set({ playerColours: playerColours });
     inProgress = true;
 }
 
