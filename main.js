@@ -38,7 +38,7 @@ browser.storage.local.get('playerColours').then(result => {
 browser.storage.local.get('game').then(result => {
     if (result.game) {
         document.getElementById('game').innerText = `Now playing: ${result.game}`;
-        document.getElementById('game').href = '';
+        document.getElementById('game').href = '#';
     } else {
         document.getElementById('game').innerText = 'Join a game to start tracking!';
         document.getElementById('game').href = 'https://boardgamearena.com/gamepanel?game=catan';
